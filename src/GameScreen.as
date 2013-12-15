@@ -1,15 +1,22 @@
 package
 {
 	import org.flixel.*;
+	import flash.display.StageQuality;
 	import flash.utils.getTimer;
 	
 	public class GameScreen extends FlxState
 	{
 		[Embed(source="../assets/images/capsized.png")] public var imgSprites:Class;
+		
+		[Embed(source="assets/sounds/death01.mp3")] public static var sndDeath:Class;
+		[Embed(source="assets/sounds/row01.mp3")] public static var sndRow:Class;
+		[Embed(source="assets/sounds/shark01.mp3")] public static var sndShark:Class;
 
 		private var shark:FlxSprite;
 		private var boat:FlxSprite;
 		private var dock:FlxSprite;
+		
+		private var timestamp:uint = 0;
 		
 		private var oarsOnLeft:Boolean = false;
 		private var boatSpeed:Number = 25;
@@ -21,6 +28,7 @@ package
 		public function GameScreen()
 		{
 			super();
+			FlxG.stage.quality = StageQuality.LOW;
 		}
 		
 		override public function create():void
@@ -28,10 +36,13 @@ package
 			FlxG.bgColor = 0xff505cc0;
 			
 			displayText = new FlxText(0, 32, FlxG.width, "");
-			shark = new FlxSprite(-100, -100);
+			shark = new FlxSprite(0, FlxG.height - 8);
 			shark.loadGraphic(imgSprites, true, true, 8, 8);
 			shark.addAnimation("shark",[1]);
 			shark.play("shark");
+			shark.velocity.x = 25;
+			shark.velocity.y = 0;
+			FlxG.play(sndShark);
 			boat = new FlxSprite(0.5 * FlxG.width - 8, FlxG.height - 16);
 			boat.loadGraphic(imgSprites, true, true, 16, 16);
 			boat.addAnimation("boat_0",[10]);
@@ -60,7 +71,7 @@ package
 		{
 			super.update();
 			
-			if (getTimer() > 9000 && !paused) displayText.text = "";
+			if ((getTimer() > 9000 + timestamp) && !paused) displayText.text = "";
 			if (!paused)
 			{
 				if (FlxG.keys.justPressed("LEFT")) switchOarsToLeft();
@@ -80,31 +91,51 @@ package
 				
 				if (shark.x < 0) 
 				{
+					FlxG.play(sndShark);
 					shark.x = 0;
-					shark.y = (int)(FlxG.random() * 48 + boat.y - 16);
+					shark.y = (int)(FlxG.random() * 48 + boat.y - 32);
 					shark.velocity.x = 25;
 					shark.velocity.y = 0;
 				}
 				else if (shark.x + shark.width > FlxG.width) 
 				{
+					FlxG.play(sndShark);
 					shark.x = FlxG.width - shark.width;
-					shark.y = (int)(FlxG.random() * 48 + boat.y - 16);
+					shark.y = (int)(FlxG.random() * 48 + boat.y - 32);
 					shark.velocity.x = -25;
 					shark.velocity.y = 0;
 				}
 			}
+			else if (FlxG.mouse.justPressed())
+			{
+				restartGame();
+			}
+		}
+		
+		public function restartGame():void
+		{
+			timestamp = getTimer();
+			paused = false;
+			displayText.text = "Up to row forward\nDown to row backward\nLeft and right to switch sides";
+			shark.reset(0, FlxG.height - 8);
+			shark.velocity.x = 25;
+			shark.velocity.y = 0;
+			FlxG.play(sndShark);
+			boat.reset(0.5 * FlxG.width - 8, FlxG.height - 16);
+			boat.angle = 0;
 		}
 		
 		public function gameOver(Obj1:FlxObject, Obj2:FlxObject):void
 		{
-			displayText.text = "The shark ate you!";
+			FlxG.play(sndDeath);
+			displayText.text = "The shark ate you!\n\nClick screen to retry.";
 			boat.kill();
 			paused = true;
 		}
 		
 		public function youWin(Obj1:FlxObject, Obj2:FlxObject):void
 		{
-			displayText.text = "You made it to the dock safely!";
+			displayText.text = "You made it to the dock safely!\n\nClick screen to play again.";
 			shark.kill();
 			paused = true;
 		}
@@ -121,6 +152,7 @@ package
 		
 		public function rowForward():void
 		{
+			FlxG.play(sndRow);
 			var _ang:Number = (Math.PI / 180) * (boat.angle - 90);
 			boat.velocity.x = boatSpeed * Math.cos(_ang);
 			boat.velocity.y = boatSpeed * Math.sin(_ang);
@@ -138,6 +170,7 @@ package
 		
 		public function rowBackward():void
 		{
+			FlxG.play(sndRow);
 			var _ang:Number = (Math.PI / 180) * (boat.angle - 90);
 			boat.velocity.x = -boatSpeed * Math.cos(_ang);
 			boat.velocity.y = -boatSpeed * Math.sin(_ang);
